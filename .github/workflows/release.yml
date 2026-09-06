@@ -75,10 +75,10 @@ jobs:
     outputs:
       val: ${{ steps.plan.outputs.manifest }}
       tag: ${{ (inputs.tag != 'dry-run' && inputs.tag) || '' }}
-      tag-flag: ${{ inputs.tag && inputs.tag != 'dry-run' && format('--tag={0}', inputs.tag) || '' }}
       publishing: ${{ inputs.tag && inputs.tag != 'dry-run' }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_TAG: ${{ inputs.tag }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
@@ -103,7 +103,11 @@ jobs:
       # but also really annoying to build CI around when it needs secrets to work right.)
       - id: plan
         run: |
-          dist ${{ (inputs.tag && inputs.tag != 'dry-run' && format('host --steps=create --tag={0}', inputs.tag)) || 'plan' }} --output-format=json > plan-dist-manifest.json
+          if [[ "$RELEASE_TAG" != "" && "$RELEASE_TAG" != "dry-run" ]]; then
+            dist host --steps=create --tag="$RELEASE_TAG" --output-format=json > plan-dist-manifest.json
+          else
+            dist plan --output-format=json > plan-dist-manifest.json
+          fi
           echo "dist ran successfully"
           cat plan-dist-manifest.json
           echo "manifest=$(jq -c "." plan-dist-manifest.json)" >> "$GITHUB_OUTPUT"
@@ -157,6 +161,7 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       BUILD_MANIFEST_NAME: target/distrib/global-dist-manifest.json
+      RELEASE_TAG: ${{ needs.plan.outputs.tag }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
@@ -178,7 +183,11 @@ jobs:
       - id: cargo-dist
         shell: bash
         run: |
-          dist build ${{ needs.plan.outputs.tag-flag }} --output-format=json "--artifacts=global" > dist-manifest.json
+          if [[ "$RELEASE_TAG" != "" ]]; then
+            dist build --tag="$RELEASE_TAG" --output-format=json "--artifacts=global" > dist-manifest.json
+          else
+            dist build --output-format=json "--artifacts=global" > dist-manifest.json
+          fi
           echo "dist ran successfully"
 
           # Parse out what we just built and upload it to scratch storage
@@ -206,6 +215,7 @@ jobs:
     if: ${{ always() && needs.plan.result == 'success' && needs.plan.outputs.publishing == 'true' && (needs.build-global-artifacts.result == 'skipped' || needs.build-global-artifacts.result == 'success') && (needs.custom-build-binaries.result == 'skipped' || needs.custom-build-binaries.result == 'success') && (needs.custom-build-docker.result == 'skipped' || needs.custom-build-docker.result == 'success') && (needs.custom-build-wasm.result == 'skipped' || needs.custom-build-wasm.result == 'success') }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_TAG: ${{ needs.plan.outputs.tag }}
     runs-on: "depot-ubuntu-latest-4"
     outputs:
       val: ${{ steps.host.outputs.manifest }}
@@ -231,7 +241,7 @@ jobs:
       - id: host
         shell: bash
         run: |
-          dist host ${{ needs.plan.outputs.tag-flag }} --steps=upload --steps=release --output-format=json > dist-manifest.json
+          dist host --tag="$RELEASE_TAG" --steps=upload --steps=release --output-format=json > dist-manifest.json
           echo "artifacts uploaded and released successfully"
           cat dist-manifest.json
           echo "manifest=$(jq -c "." dist-manifest.json)" >> "$GITHUB_OUTPUT"
