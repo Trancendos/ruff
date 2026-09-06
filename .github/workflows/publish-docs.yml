@@ -5,12 +5,6 @@
 name: mkdocs
 
 on:
-  workflow_dispatch:
-    inputs:
-      ref:
-        description: "The commit SHA, tag, or branch to publish. Uses the default branch if not specified."
-        default: ""
-        type: string
   workflow_call:
     inputs:
       plan:
@@ -28,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ fromJson(inputs.plan).announcement_tag }}
           persist-credentials: true
 
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -37,14 +31,8 @@ jobs:
 
       - name: "Set docs version"
         env:
-          version: ${{ (inputs.plan != '' && fromJson(inputs.plan).announcement_tag) || inputs.ref }}
+          version: ${{ fromJson(inputs.plan).announcement_tag }}
         run: |
-          # if version is missing, use 'latest'
-          if [ -z "$version" ]; then
-            echo "Using 'latest' as version"
-            version="latest"
-          fi
-
           # Use version as display name for now
           display_name="$version"
 
@@ -120,12 +108,12 @@ jobs:
             --label="documentation"
 
       - name: "Merge Pull Request"
-        if: ${{ inputs.plan != '' && !fromJson(inputs.plan).announcement_tag_is_implicit }}
+        if: ${{ !fromJson(inputs.plan).announcement_tag_is_implicit }}
         working-directory: astral-docs
         env:
           GITHUB_TOKEN: ${{ secrets.ASTRAL_DOCS_PAT }}
         run: |
-          # auto-merge the PR if the build was triggered by a release. Manual builds should be reviewed by a human.
+          # auto-merge the PR if the build was triggered by a release.
           # give the PR a few seconds to be created before trying to auto-merge it
           sleep 10
           gh pr merge --squash "${branch_name}"
