@@ -31,35 +31,35 @@ jobs:
         env:
           # SECURITY REQUIREMENT: This must be set to a specific, reviewed commit hash from astral-sh/versions
           # to prevent arbitrary code execution. Using a branch name or 'main' is NOT secure.
-          # 
+          #
           # To update this value:
           # 1. Review the changes in the target commit of astral-sh/versions
           # 2. Verify the scripts (convert-cargo-dist-plan.py, insert-versions.py) are safe
           # 3. Update VERSIONS_REPO_COMMIT to the full 40-character commit SHA
           #
           # Example: VERSIONS_REPO_COMMIT: "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0"
-          VERSIONS_REPO_COMMIT: ""  # MUST BE SET - workflow will fail if empty
+          VERSIONS_REPO_COMMIT: "" # MUST BE SET - workflow will fail if empty
         run: |
           if [ -z "$VERSIONS_REPO_COMMIT" ]; then
             echo "ERROR: VERSIONS_REPO_COMMIT must be set to a specific commit hash for security"
             echo "See comments in the workflow file for instructions"
             exit 1
           fi
-          
+
           # Clone without credentials to prevent PAT from being persisted in .git/config
           git clone https://github.com/astral-sh/versions.git astral-versions
           cd astral-versions
-          
+
           # Checkout the pinned, reviewed commit
           git checkout "$VERSIONS_REPO_COMMIT"
-          
+
           # Verify we're at the expected commit
           actual_commit=$(git rev-parse HEAD)
           if [ "$actual_commit" != "$VERSIONS_REPO_COMMIT" ]; then
             echo "ERROR: Commit mismatch. Expected $VERSIONS_REPO_COMMIT, got $actual_commit"
             exit 1
           fi
-          
+
           echo "Using versions repository at verified commit: $actual_commit"
 
       - name: "Install uv"
