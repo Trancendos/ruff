@@ -1057,10 +1057,15 @@ jobs:
       github.repository == 'astral-sh/ruff' &&
       (
         github.ref == 'refs/heads/main' ||
-        needs.determine_changes.outputs.formatter == 'true' ||
-        needs.determine_changes.outputs.linter == 'true' ||
-        needs.determine_changes.outputs.parser == 'true' ||
-        needs.determine_changes.outputs.benchmarks == 'true'
+        (
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          (
+            needs.determine_changes.outputs.formatter == 'true' ||
+            needs.determine_changes.outputs.linter == 'true' ||
+            needs.determine_changes.outputs.parser == 'true' ||
+            needs.determine_changes.outputs.benchmarks == 'true'
+          )
+        )
       )
     timeout-minutes: 20
     permissions:
@@ -1104,8 +1109,13 @@ jobs:
       github.repository == 'astral-sh/ruff' &&
       (
         github.ref == 'refs/heads/main' ||
-        needs.determine_changes.outputs.ty == 'true' ||
-        needs.determine_changes.outputs.benchmarks == 'true'
+        (
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          (
+            needs.determine_changes.outputs.ty == 'true' ||
+            needs.determine_changes.outputs.benchmarks == 'true'
+          )
+        )
       )
     timeout-minutes: 20
     steps:
@@ -1211,9 +1221,14 @@ jobs:
       (
         !contains(github.event.pull_request.labels.*.name, 'no-test') &&
         (
-          needs.determine_changes.outputs.ty == 'true' ||
-          needs.determine_changes.outputs.benchmarks == 'true' ||
-          github.ref == 'refs/heads/main'
+          github.ref == 'refs/heads/main' ||
+          (
+            github.event.pull_request.head.repo.full_name == github.repository &&
+            (
+              needs.determine_changes.outputs.ty == 'true' ||
+              needs.determine_changes.outputs.benchmarks == 'true'
+            )
+          )
         )
       )
     timeout-minutes: 20
